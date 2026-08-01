@@ -4,7 +4,8 @@
   "private": true,
   "description": "SOFO Sync - One QR. Instant Connection. Real-Time Collaboration.",
   "workspaces": [
-    "apps/*",
+    "apps/web",
+    "apps/desktop",
     "backend/*",
     "shared"
   ],
@@ -26,5 +27,8 @@
     "monorepo"
   ],
   "author": "SOFO Sync Team",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "caniuse-lite": "^1.0.30001806"
+  }
 }
