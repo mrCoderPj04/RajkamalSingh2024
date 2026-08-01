@@ -1,22 +1,30 @@
 {
-  "name": "rajkamalsingh",
-  "version": "0.1.0",
+  "name": "sofo-sync",
+  "version": "1.0.0",
   "private": true,
+  "description": "SOFO Sync - One QR. Instant Connection. Real-Time Collaboration.",
+  "workspaces": [
+    "apps/*",
+    "backend/*",
+    "shared"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "npm run dev --workspace=@sofo-sync/web",
+    "dev:web": "npm run dev --workspace=@sofo-sync/web",
+    "dev:backend": "npm run dev --workspace=@sofo-sync/api",
+    "build": "npm run build --workspace=@sofo-sync/web",
+    "start": "npm run start --workspace=@sofo-sync/web",
+    "lint": "npm run lint --workspace=@sofo-sync/web"
   },
-  "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "next": "15.0.4"
-  },
-  "devDependencies": {
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "eslint": "^8",
-    "eslint-config-next": "15.0.4"
-  }
+  "keywords": [
+    "sofo-sync",
+    "qr-code",
+    "realtime-collaboration",
+    "whiteboard",
+    "documents",
+    "webrtc",
+    "monorepo"
+  ],
+  "author": "SOFO Sync Team",
+  "license": "MIT"
 }

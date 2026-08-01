@@ -1,0 +1,12 @@
+# Dockerfile for SOFO Sync Backend Services
+FROM node:20-alpine
+
+WORKDIR /app
+COPY package*.json ./
+COPY backend/api/package*.json ./backend/api/
+RUN npm install --workspace=@sofo-sync/api
+
+COPY backend/api ./backend/api
+
+EXPOSE 4000
+CMD ["npm", "run", "start", "--workspace=@sofo-sync/api"]

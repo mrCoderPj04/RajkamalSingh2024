@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# SOFO Sync ⚡
+> **One QR. Instant Connection. Real-Time Collaboration.**
 
-## Getting Started
+![SOFO Sync Monorepo Architecture](https://img.shields.io/badge/Architecture-Monorepo-blueviolet?style=for-the-badge)
+![Next.js 15](https://img.shields.io/badge/Next.js-15.0.4-black?style=for-the-badge&logo=next.js)
+![React 19](https://img.shields.io/badge/React-19.0.0-61DAFB?style=for-the-badge&logo=react)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🌟 Overview
+
+**SOFO Sync** empowers cross-device collaboration in seconds. Scan **One QR Code** to instantly pair your mobile, web, and desktop devices into a high-speed real-time workspace featuring interactive whiteboards, collaborative documents, media streaming, and AI assistance.
+
+---
+
+## 📂 Repository Structure
+
+```
+SOFO-Sync/
+│
+├── apps/
+│   ├── web/           # Next.js 15 Web Workspace & Collaboration Dashboard
+│   ├── mobile/        # React Native / PWA Mobile Companion
+│   └── desktop/       # Electron / Tauri Native Desktop App
+│
+├── backend/
+│   ├── api/           # REST API Gateway Service
+│   ├── websocket/     # Real-time WebSocket & Peer Signaling Relay
+│   ├── auth/          # Authentication & QR Security Tokens
+│   ├── session/       # Active Session & Peer State Tracker
+│   ├── upload/        # High-speed File Upload Engine
+│   ├── media/         # WebRTC Video/Audio Streaming Service
+│   ├── documents/     # Collaborative Document Sync Engine
+│   ├── whiteboard/    # Dynamic Canvas Whiteboard State Synchronizer
+│   ├── storage/       # Multi-target Storage Abstraction Adapter
+│   ├── database/      # Database Schemas & Persistence Client
+│   └── ai/            # SOFO AI Assistant & Summarization Engine
+│
+├── shared/            # Shared Types, Constants & QR Handshake Helpers
+├── docker/            # Container Deployment & Compose Setup
+├── docs/              # Specifications, API & Protocol Documentation
+└── README.md          # Project Overview
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## 🚀 Quick Start
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Prerequisites
+- **Node.js**: `v18.x` or `v20.x`
+- **npm**: `v9.x` or later
 
-## Learn More
+### Installation & Execution
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# Clone the repository
+git clone https://github.com/mrCoderPj04/RajkamalSingh2024.git SOFO-Sync
+cd SOFO-Sync
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Install workspace dependencies
+npm install
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Launch web application
+npm run dev
+```
 
-## Deploy on Vercel
+Visit **http://localhost:3000** to launch **SOFO Sync**.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## ✨ Features
+
+- 📱 **One QR Instant Pairing**: Scan to connect devices in <300ms without account friction.
+- 🎨 **Dynamic Whiteboard**: Draw, erase, place vector shapes, and broadcast real-time canvas strokes.
+- 📝 **Live Collaborative Documents**: Edit text simultaneously with peer presence indicators.
+- 📁 **Instant File Transfer Vault**: Fast local drop-and-share for files and images.
+- 🤖 **SOFO AI Copilot**: Generate summaries, outline ideas, and answer session queries on the fly.
+- 🐳 **Docker Ready**: One-command deployment with `docker-compose up`.
+
+---
+
+## 📚 Documentation
+- [System Architecture](file:///home/mr_coder_04/Documents/PROJECT/docs/architecture.md)
+- [QR Handshake Protocol](file:///home/mr_coder_04/Documents/PROJECT/docs/qr-protocol.md)
+- [Real-Time Collaboration Specs](file:///home/mr_coder_04/Documents/PROJECT/docs/realtime-collaboration.md)
+
+---
+
+Developed with ❤️ by the **SOFO Sync Team**.
