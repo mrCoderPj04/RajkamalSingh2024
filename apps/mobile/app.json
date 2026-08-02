@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "SOFO Sync Mobile",
+    "slug": "sofo-sync-mobile",
+    "version": "1.0.0",
+    "sdkVersion": "54.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#07090E"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#07090E"
+      }
+    }
+  }
+}
