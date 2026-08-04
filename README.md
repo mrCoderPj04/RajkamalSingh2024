@@ -87,4 +87,4 @@ Visit **http://localhost:3000** to launch **SOFO Sync**.
 
 ---
 
-Developed with ❤️ by the **SOFO Sync Team**.
+Developed with ❤️ by the **MrCoder**.
