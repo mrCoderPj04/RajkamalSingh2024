@@ -2,7 +2,7 @@
   "name": "@sofo-sync/mobile",
   "version": "1.0.0",
   "private": true,
-  "description": "SOFO Sync Mobile Application (React Native / Expo SDK 54)",
+  "description": "SOFO Sync Mobile Application (React Native / Expo)",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start -c",
@@ -11,10 +11,10 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "expo": "~54.0.0",
+    "expo": "~52.0.0",
     "expo-status-bar": "~2.0.0",
     "react": "18.3.1",
-    "react-native": "0.76.7"
+    "react-native": "0.76.6"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2"
