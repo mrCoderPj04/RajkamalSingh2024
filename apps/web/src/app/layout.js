@@ -1,12 +1,18 @@
 import './globals.css';
 
+export const viewport = {
+  themeColor: '#07090E',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export const metadata = {
   title: 'SOFO Sync | One QR. Instant Connection. Real-Time Collaboration.',
   description: 'Pair web, mobile, and desktop devices instantly with a single QR code. Real-time whiteboard, collaborative document editor, media streaming, and AI copilot.',
   keywords: ['SOFO Sync', 'QR Code Sync', 'Real-Time Collaboration', 'Whiteboard', 'WebRTC P2P', 'Document Sharing'],
   authors: [{ name: 'SOFO Sync Team' }],
   manifest: '/manifest.json',
-  themeColor: '#07090E',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -19,7 +25,6 @@ export default function RootLayout({ children }) {
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#07090E" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
