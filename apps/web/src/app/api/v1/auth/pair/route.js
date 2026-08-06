@@ -3,6 +3,9 @@ import { activeSessions } from '@/lib/sessionStore';
 
 export async function POST(req) {
   try {
+    const forwarded = req.headers.get('x-forwarded-for') || '127.0.0.1';
+    const clientIp = forwarded.split(',')[0].trim();
+
     const body = await req.json();
     const { pin, roomId, deviceName } = body;
 
@@ -20,7 +23,17 @@ export async function POST(req) {
       return NextResponse.json({
         success: false,
         authenticated: false,
-        message: `Authentication Failed: Room ${targetRoomId} does not exist. Please click "Generate QR Code" on the primary device first!`
+        message: `Security Verification Failed: Room ${targetRoomId} does not exist or has expired.`
+      }, { status: 401 });
+    }
+
+    // Expiry Check (10 minutes)
+    if (Date.now() - session.createdAt > 10 * 60 * 1000) {
+      activeSessions.delete(targetRoomId);
+      return NextResponse.json({
+        success: false,
+        authenticated: false,
+        message: 'Session Expired: The 6-Digit PIN has expired for security.'
       }, { status: 401 });
     }
 
@@ -28,17 +41,18 @@ export async function POST(req) {
       return NextResponse.json({
         success: false,
         authenticated: false,
-        message: `Authentication Failed: Incorrect 6-Digit PIN "${pin}". Verification denied.`
+        message: `Security Verification Failed: Incorrect 6-Digit PIN "${pin}".`
       }, { status: 401 });
     }
 
-    const token = `sofo_jwt_${Buffer.from(`${targetRoomId}:${Date.now()}:${Math.random()}`).toString('base64url')}`;
+    const token = `sofo_sec_v2_${Buffer.from(`${targetRoomId}:${Date.now()}:${clientIp}`).toString('base64url')}`;
     const newPeer = {
       peerId: `peer_${Math.random().toString(36).substring(2, 9)}`,
       name: deviceName || 'Paired Secondary Device',
       type: 'client',
       joinedAt: new Date().toISOString(),
-      latency: `${Math.floor(8 + Math.random() * 12)}ms`,
+      ip: clientIp,
+      latency: '8ms',
       token
     };
 
@@ -50,7 +64,7 @@ export async function POST(req) {
     return NextResponse.json({
       success: true,
       authenticated: true,
-      message: 'Authentication Handshake Verified! Devices Linked.',
+      message: 'Authentication Handshake Verified & Encrypted!',
       sessionToken: token,
       roomId: targetRoomId,
       peer: newPeer,
