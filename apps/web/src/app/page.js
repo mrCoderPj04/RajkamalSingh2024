@@ -559,10 +559,8 @@ export default function SOFOSyncApp() {
       {/* NAVBAR */}
       <header className="h-16 border-b border-slate-800/80 bg-[#090D16]/90 backdrop-blur-md px-4 lg:px-8 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-0.5 shadow-lg shadow-indigo-500/20">
-            <div className="w-full h-full bg-[#07090E] rounded-[10px] flex items-center justify-center font-black text-xl text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400">
-              S
-            </div>
+          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/20 border border-slate-800 flex items-center justify-center bg-slate-900">
+            <img src="/SOFO_syc.png" alt="SOFO Sync Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="font-heading font-black text-base lg:text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">

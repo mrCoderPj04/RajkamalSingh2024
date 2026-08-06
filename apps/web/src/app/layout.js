@@ -13,6 +13,10 @@ export const metadata = {
   keywords: ['SOFO Sync', 'QR Code Sync', 'Real-Time Collaboration', 'Whiteboard', 'WebRTC P2P', 'Document Sharing'],
   authors: [{ name: 'SOFO Sync Team' }],
   manifest: '/manifest.json',
+  icons: {
+    icon: '/SOFO_syc.png',
+    apple: '/SOFO_syc.png'
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -25,11 +29,12 @@ export default function RootLayout({ children }) {
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" type="image/png" href="/SOFO_syc.png" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="SOFO Sync" />
-        <link rel="apple-touch-icon" href="/logo/SOFO_syc.png" />
+        <link rel="apple-touch-icon" href="/SOFO_syc.png" />
       </head>
       <body className="bg-[#07090E] text-slate-100 antialiased selection:bg-indigo-500 selection:text-white" suppressHydrationWarning>
         {children}

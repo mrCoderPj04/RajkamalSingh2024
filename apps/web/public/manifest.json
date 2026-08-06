@@ -8,13 +8,13 @@
   "theme_color": "#07090E",
   "icons": [
     {
-      "src": "/logo/SOFO_syc.png",
+      "src": "/SOFO_syc.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/logo/SOFO_syc.png",
+      "src": "/SOFO_syc.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
