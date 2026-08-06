@@ -9,6 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
     "caniuse-lite": "^1.0.30001806",
     "next": "15.0.4",
     "react": "^19.0.0",

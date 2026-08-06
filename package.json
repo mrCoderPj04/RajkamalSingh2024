@@ -6,6 +6,7 @@
   "workspaces": [
     "apps/web",
     "apps/desktop",
+    "apps/mobile",
     "backend/*",
     "shared"
   ],
@@ -29,6 +30,11 @@
   "author": "SOFO Sync Team",
   "license": "MIT",
   "dependencies": {
-    "caniuse-lite": "^1.0.30001806"
+    "caniuse-lite": "^1.0.30001806",
+    "compression": "^1.8.1",
+    "debug": "^4.4.3",
+    "http-errors": "^2.0.1",
+    "statuses": "^2.0.2",
+    "stream-buffers": "^3.0.3"
   }
 }

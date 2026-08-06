@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "SOFO Sync Mobile",
-    "slug": "sofo-sync-mobile",
+    "slug": "mrcoder",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
@@ -15,7 +15,14 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#07090E"
+      },
+      "package": "com.pjsofonicteam.mrcoder"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "53147774-64c2-4645-adad-818d5ef50b68"
       }
-    }
+    },
+    "owner": "pjsofonic-team"
   }
 }

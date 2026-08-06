@@ -7,6 +7,7 @@ COPY backend/api/package*.json ./backend/api/
 RUN npm install --workspace=@sofo-sync/api
 
 COPY backend/api ./backend/api
+COPY backend/ai ./backend/ai
 
-EXPOSE 4000
+EXPOSE 5000
 CMD ["npm", "run", "start", "--workspace=@sofo-sync/api"]
