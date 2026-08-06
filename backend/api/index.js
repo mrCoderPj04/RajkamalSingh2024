@@ -63,12 +63,21 @@ const server = http.createServer(async (req, res) => {
   const clientIp = getClientIp(req);
   const url = new URL(req.url, `http://${req.headers.host || `localhost:${PORT}`}`);
 
-  // Root Welcome & Health Check
-  if (url.pathname === '/' || url.pathname === '/health' || url.pathname === '/api/v1/health') {
+  // Root Welcome, /api & Health Check
+  if (url.pathname === '/' || url.pathname === '/api' || url.pathname === '/api/v1' || url.pathname === '/health' || url.pathname === '/api/v1/health') {
     return res.end(JSON.stringify({
       status: 'OK',
       message: '🚀 SOFO Sync API Gateway v2.0 is Online & Ready!',
       service: 'SOFO Sync API Gateway (Multi-Device Synced)',
+      endpoints: {
+        health: '/health',
+        qrGenerate: '/api/v1/auth/qr/generate',
+        pairHandshake: '/api/v1/auth/pair',
+        peers: '/api/v1/session/peers',
+        syncData: '/api/v1/session/sync-data',
+        aiChat: '/api/v1/ai/chat',
+        disconnect: '/api/v1/session/disconnect'
+      },
       port: PORT,
       aiEngine: 'Google Gemini 2.0 Flash AI Enabled',
       activeRooms: activeSessions.size,
