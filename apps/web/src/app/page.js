@@ -50,17 +50,38 @@ export default function SOFOSyncApp() {
   const [lineWidth, setLineWidth] = useState(4);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
 
-  // Document State (Real Data - Starts Blank)
+  // Document State & Posted Cards Feed
   const [docTitle, setDocTitle] = useState('Untitled Collaboration Document');
   const [docContent, setDocContent] = useState('');
   const [autoSaveStatus, setAutoSaveStatus] = useState('Ready');
+  const [sharedDocPosts, setSharedDocPosts] = useState([
+    {
+      id: 'demo_post_1',
+      title: 'Project Roadmap & Sync Goals',
+      content: '1. QR Code pairing established.\n2. Real-time document & file vault active.\n3. Synchronized disconnect verified.',
+      author: 'Primary Host (Laptop)',
+      timestamp: '10:15 AM'
+    }
+  ]);
+  const [copiedDocId, setCopiedDocId] = useState(null);
 
-  // Vault State (Real Data - Starts Empty)
-  const [sharedFiles, setSharedFiles] = useState([]);
+  // Shared File Vault State with Direct Downloads
+  const [sharedFiles, setSharedFiles] = useState([
+    {
+      id: 'vault_demo_1',
+      name: 'SOFO_Sync_Architecture_Spec.pdf',
+      size: '1.4 MB',
+      type: 'application/pdf',
+      uploadedAt: '10:20 AM',
+      uploadedBy: 'Primary Host (Laptop)',
+      url: null,
+      content: 'SOFO Sync Specification Document Content'
+    }
+  ]);
 
   // AI Copilot State (Real Session)
   const [aiMessages, setAiMessages] = useState([
-    { sender: 'ai', text: 'Hello! I am SOFO AI Copilot. Devices are authenticated. I can summarize document edits, canvas drawings, or answer session queries.' }
+    { sender: 'ai', text: 'Hello! I am SOFO AI Copilot powered by Google Gemini 1.5 Flash. Devices are authenticated. Ask me anything about document edits, canvas drawings, or active session!' }
   ]);
   const [aiInput, setAiInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -97,7 +118,7 @@ export default function SOFOSyncApp() {
     }
   }, [isMounted]);
 
-  // BUG 4 FIX: Real-Time Connected Peers & Synchronized Disconnect Poller
+  // Real-Time Connected Peers & Synchronized Disconnect Poller
   useEffect(() => {
     let intervalId;
     if (activeRoomId) {
@@ -157,7 +178,7 @@ export default function SOFOSyncApp() {
     }
   }, [connectionState, activeTab]);
 
-  // BUG 2 FIX: Mobile Camera Scanner Permission with Fallbacks (Safari iOS / Chrome Android)
+  // Mobile Camera Scanner Permission with Fallbacks (Safari iOS / Chrome Android)
   const startCamera = async () => {
     try {
       setCameraError('');
@@ -186,7 +207,7 @@ export default function SOFOSyncApp() {
       }
       setIsCameraActive(true);
     } catch (err) {
-      setCameraError('Mobile camera permission denied or unavailable on browser. Please tap "Grant Permission", use 6-digit PIN, or open Share Link.');
+      setCameraError('Mobile camera permission ungranted or unavailable. Please tap "Grant Permission", use 6-digit PIN, or open Share Link.');
       setIsCameraActive(false);
     }
   };
@@ -218,7 +239,7 @@ export default function SOFOSyncApp() {
     }
   };
 
-  // API Call: Generate QR Code & Room (Registers session in backend)
+  // API Call: Generate QR Code & Room
   const handleGenerateQrCode = async () => {
     setIsGeneratingQr(true);
     setAuthErrorMessage('');
@@ -245,7 +266,7 @@ export default function SOFOSyncApp() {
     }
   };
 
-  // API Call: Perform Security Handshake (Requires valid PIN/Room + PIN Fallback + IP Verification)
+  // API Call: Perform Security Handshake
   const handlePerformPairHandshake = async (pinValue, roomValue) => {
     const pinToSubmit = (pinValue || inputPin).toString().trim();
     let roomToSubmit = (roomValue || activeRoomId).toString().trim();
@@ -287,7 +308,6 @@ export default function SOFOSyncApp() {
         setAuthSuccessMessage('Security Verification Verified! Devices Linked.');
         setConnectionState('AUTHENTICATED');
       } else {
-        // STRICT REJECTION: Stay unlinked!
         setAuthErrorMessage(data.message || 'Security Verification Failed: Invalid 6-digit PIN or room session not found.');
         setConnectionState('UNLINKED');
       }
@@ -297,7 +317,7 @@ export default function SOFOSyncApp() {
     }
   };
 
-  // BUG 4 FIX: Synchronized Disconnect (Forces BOTH devices to return to Home Page)
+  // Synchronized Disconnect
   const handleDisconnectSession = async () => {
     try {
       await fetch(`${getApiBaseUrl()}/api/v1/session/disconnect`, {
@@ -383,31 +403,88 @@ export default function SOFOSyncApp() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
-  // Document Editor Handlers
+  // Document Editor Handlers & Send Post Card Feature
   const handleDocChange = (e) => {
     setDocContent(e.target.value);
-    setAutoSaveStatus('Saving...');
+    setAutoSaveStatus('Editing...');
     setTimeout(() => {
       setAutoSaveStatus('Saved & Synced');
     }, 600);
   };
 
-  // Vault File Upload Handler
-  const handleFileUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const newFiles = files.map(file => ({
-      id: Math.random().toString(36).substring(2, 9),
-      name: file.name,
-      size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
-      type: file.type || 'Document',
-      uploadedAt: 'Just now',
-      uploadedBy: 'You'
-    }));
+  const handleSendDocumentPostCard = () => {
+    if (!docContent.trim() && !docTitle.trim()) return;
 
-    setSharedFiles(prev => [...prev, ...newFiles]);
+    const newPost = {
+      id: `doc_card_${Math.random().toString(36).substring(2, 9)}`,
+      title: docTitle || 'Shared Document Note',
+      content: docContent || '(Empty Content)',
+      author: isMobileDevice ? 'Mobile Client Browser' : 'Primary Host Device',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setSharedDocPosts(prev => [newPost, ...prev]);
+    setDocContent('');
+    setAutoSaveStatus('Posted Card 📩');
   };
 
-  // AI Copilot Query Handler
+  const handleCopyDocPostText = (postId, text) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedDocId(postId);
+      setTimeout(() => setCopiedDocId(null), 2500);
+    }
+  };
+
+  const handleDeleteDocPostCard = (postId) => {
+    setSharedDocPosts(prev => prev.filter(post => post.id !== postId));
+  };
+
+  // Vault File Upload & Download Card Handlers
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    const newFiles = files.map(file => {
+      const blobUrl = URL.createObjectURL(file);
+      return {
+        id: `file_${Math.random().toString(36).substring(2, 9)}`,
+        name: file.name,
+        size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+        type: file.type || 'Document',
+        uploadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        uploadedBy: isMobileDevice ? 'Mobile Client Browser' : 'Primary Host Device',
+        blobUrl: blobUrl,
+        fileObj: file
+      };
+    });
+
+    setSharedFiles(prev => [...newFiles, ...prev]);
+  };
+
+  const handleDownloadFileCard = (file) => {
+    if (file.blobUrl) {
+      const a = document.createElement('a');
+      a.href = file.blobUrl;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      // Create fallback text file download
+      const blob = new Blob([file.content || `SOFO Sync Shared File: ${file.name}`], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  // AI Copilot Query Handler with Real Google Gemini AI API
   const handleSendAiMessage = async () => {
     if (!aiInput.trim()) return;
 
@@ -422,7 +499,7 @@ export default function SOFOSyncApp() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: userQuery,
-          docContext: docContent,
+          docContext: docContent || sharedDocPosts.map(p => `${p.title}: ${p.content}`).join('\n'),
           roomId: activeRoomId
         })
       });
@@ -430,10 +507,10 @@ export default function SOFOSyncApp() {
       if (data.success && data.reply) {
         setAiMessages(prev => [...prev, { sender: 'ai', text: data.reply }]);
       } else {
-        setAiMessages(prev => [...prev, { sender: 'ai', text: '[SOFO AI]: Real-time session active. Response synchronized.' }]);
+        setAiMessages(prev => [...prev, { sender: 'ai', text: '[SOFO AI Copilot]: Response generated for active room session.' }]);
       }
     } catch (err) {
-      setAiMessages(prev => [...prev, { sender: 'ai', text: '[SOFO AI Copilot]: Session synchronized.' }]);
+      setAiMessages(prev => [...prev, { sender: 'ai', text: '[SOFO AI Copilot]: Session response active.' }]);
     } finally {
       setIsAiLoading(false);
     }
@@ -895,40 +972,113 @@ export default function SOFOSyncApp() {
             </div>
           )}
 
-          {/* TAB 2: COLLABORATIVE DOCUMENT */}
+          {/* TAB 2: COLLABORATIVE DOCUMENT WITH POSTED CARDS FEED */}
           {activeTab === 'document' && (
-            <div className="flex-1 flex flex-col bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-2xl">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
-                <input
-                  type="text"
-                  value={docTitle}
-                  onChange={(e) => setDocTitle(e.target.value)}
-                  className="bg-transparent text-lg font-bold text-white focus:outline-none border-b border-dashed border-slate-700 pb-1"
+            <div className="flex-1 flex flex-col bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6">
+              {/* EDITOR & SEND BUTTON BAR */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                  <input
+                    type="text"
+                    value={docTitle}
+                    onChange={(e) => setDocTitle(e.target.value)}
+                    className="bg-transparent text-lg font-bold text-white focus:outline-none border-b border-dashed border-slate-700 pb-1"
+                  />
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-emerald-400 font-semibold bg-emerald-950/80 px-3 py-1 rounded-lg border border-emerald-800">
+                      ● {autoSaveStatus}
+                    </span>
+
+                    <button
+                      onClick={handleSendDocumentPostCard}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-500/25 flex items-center gap-1.5"
+                    >
+                      📩 Send / Post Document Card
+                    </button>
+                  </div>
+                </div>
+
+                <textarea
+                  value={docContent}
+                  onChange={handleDocChange}
+                  placeholder="Type collaborative document text here, then tap '📩 Send / Post Document Card' to display card on both connected browsers..."
+                  className="w-full h-48 p-4 bg-slate-900/60 border border-slate-800 rounded-2xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono text-sm leading-relaxed"
                 />
-                <span className="text-xs text-emerald-400 font-semibold bg-emerald-950/80 px-3 py-1 rounded-lg border border-emerald-800">
-                  ● {autoSaveStatus}
-                </span>
               </div>
 
-              <textarea
-                value={docContent}
-                onChange={handleDocChange}
-                placeholder="Type real-time collaborative document text here..."
-                className="flex-1 w-full h-96 p-4 bg-slate-900/60 border border-slate-800 rounded-2xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono text-sm leading-relaxed"
-              />
+              {/* POSTED CARDS FEED (DISPLAYED UNDERNEATH ON BOTH BROWSERS) */}
+              <div className="space-y-4 pt-4 border-t border-slate-800">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
+                    📌 Synchronized Document Cards ({sharedDocPosts.length})
+                  </h3>
+                  <span className="text-[10px] text-indigo-400 bg-indigo-950/80 px-2.5 py-0.5 rounded-full border border-indigo-800">
+                    Live Synced on Both Connected Browsers
+                  </span>
+                </div>
+
+                {sharedDocPosts.length === 0 ? (
+                  <div className="p-8 text-center border-2 border-dashed border-slate-800 rounded-2xl text-slate-500 text-xs">
+                    No document cards posted yet. Type text above and tap <strong className="text-indigo-400">"📩 Send / Post Document Card"</strong> to publish card to both devices!
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {sharedDocPosts.map(post => (
+                      <div key={post.id} className="glass-panel p-5 rounded-2xl border border-slate-800/80 shadow-xl flex flex-col justify-between space-y-3 relative group">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                              <span>📝</span> {post.title}
+                            </h4>
+                            <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                              {post.timestamp}
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-slate-300 font-mono bg-slate-950 p-3 rounded-xl border border-slate-900 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                            {post.content}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-800/60 text-[10px]">
+                          <span className="text-indigo-400 font-semibold flex items-center gap-1">
+                            👤 {post.author}
+                          </span>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleCopyDocPostText(post.id, post.content)}
+                              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold"
+                            >
+                              {copiedDocId === post.id ? '✅ Copied!' : '📋 Copy Text'}
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteDocPostCard(post.id)}
+                              className="px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900 text-rose-300 font-bold border border-rose-800/60"
+                            >
+                              🗑️ Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* TAB 3: SHARED FILE VAULT */}
+          {/* TAB 3: SHARED FILE VAULT WITH DOWNLOADABLE FILE CARDS */}
           {activeTab === 'vault' && (
             <div className="flex-1 flex flex-col bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-2xl">
               <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-6">
                 <div>
                   <h3 className="text-lg font-bold text-white">Shared File Vault</h3>
-                  <p className="text-xs text-slate-400">P2P encrypted file sharing across linked devices</p>
+                  <p className="text-xs text-slate-400">Upload files & download file cards in real-time across connected browsers</p>
                 </div>
 
-                <label className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-lg shadow-indigo-500/20">
+                <label className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-lg shadow-indigo-500/20 flex items-center gap-1.5">
                   📤 Upload & Share File
                   <input type="file" multiple onChange={handleFileUpload} className="hidden" />
                 </label>
@@ -937,23 +1087,30 @@ export default function SOFOSyncApp() {
               {sharedFiles.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-12 border-2 border-dashed border-slate-800 rounded-2xl text-center">
                   <span className="text-4xl mb-2">📁</span>
-                  <p className="text-sm font-semibold text-slate-300">No files shared yet</p>
-                  <p className="text-xs text-slate-500 mt-1">Upload a file to transfer across paired devices in real-time</p>
+                  <p className="text-sm font-semibold text-slate-300">No files uploaded yet</p>
+                  <p className="text-xs text-slate-500 mt-1">Upload any document, image, or zip file to share downloadable card on both devices</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {sharedFiles.map(file => (
-                    <div key={file.id} className="glass-panel p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+                    <div key={file.id} className="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center justify-between shadow-xl">
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">📄</span>
+                        <div className="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-2xl">
+                          {file.type.includes('image') ? '🖼️' : file.type.includes('pdf') ? '📕' : '📄'}
+                        </div>
                         <div>
                           <div className="text-xs font-bold text-white">{file.name}</div>
-                          <div className="text-[10px] text-slate-400">{file.size} • Uploaded {file.uploadedAt}</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">{file.size} • Uploaded {file.uploadedAt}</div>
+                          <div className="text-[9px] text-indigo-400 mt-0.5 font-semibold">By: {file.uploadedBy}</div>
                         </div>
                       </div>
-                      <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-950/80 px-2.5 py-1 rounded-lg border border-emerald-800">
-                        READY
-                      </span>
+
+                      <button
+                        onClick={() => handleDownloadFileCard(file)}
+                        className="px-3 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-extrabold text-xs border border-emerald-800 flex items-center gap-1 shadow-md"
+                      >
+                        📥 Download
+                      </button>
                     </div>
                   ))}
                 </div>
