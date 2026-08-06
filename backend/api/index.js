@@ -1,6 +1,6 @@
 /**
  * SOFO Sync API Gateway Service (Production - Port 5000)
- * Security Enhanced: PIN Fallback Verification, IP Subnet Verification & Disconnect
+ * Security Enhanced: Multi-Device Real-Time Data Syncing for Document Cards, File Vault & Peers
  */
 
 const http = require('http');
@@ -67,7 +67,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/health' || url.pathname === '/api/v1/health') {
     return res.end(JSON.stringify({
       status: 'OK',
-      service: 'SOFO Sync API Gateway (Security Verified)',
+      service: 'SOFO Sync API Gateway (Multi-Device Synced)',
       port: PORT,
       aiEngine: 'Google Gemini AI Enabled',
       activeRooms: activeSessions.size,
@@ -75,7 +75,7 @@ const server = http.createServer(async (req, res) => {
     }));
   }
 
-  // Generate QR Code & Share Link (Registers session with Security Verification)
+  // Generate QR Code & Share Link (Registers session with Data Sync Stores)
   if (url.pathname === '/api/v1/auth/qr/generate' && req.method === 'POST') {
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
     const roomId = `SOFO-${pin}`;
@@ -98,7 +98,17 @@ const server = http.createServer(async (req, res) => {
       createdAt: Date.now(),
       failedAttempts: 0,
       hostIp: clientIp,
-      peers: [hostPeer]
+      peers: [hostPeer],
+      docPosts: [
+        {
+          id: 'demo_post_1',
+          title: 'Project Roadmap & Sync Goals',
+          content: '1. QR Code pairing established.\n2. Real-time document & file vault active.\n3. Synchronized disconnect verified.',
+          author: 'Primary Host Device',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ],
+      sharedFiles: []
     });
 
     return res.end(JSON.stringify({
@@ -131,7 +141,7 @@ const server = http.createServer(async (req, res) => {
 
     let session = activeSessions.get(targetRoomId);
 
-    // PIN Fallback Search across active sessions if room ID didn't match directly
+    // PIN Fallback Search across active sessions
     if (!session) {
       for (const [id, s] of activeSessions.entries()) {
         if (s.pin === cleanPin && s.status !== 'DISCONNECTED') {
@@ -215,6 +225,8 @@ const server = http.createServer(async (req, res) => {
       },
       peer: newPeer,
       allPeers: session.peers,
+      docPosts: session.docPosts || [],
+      sharedFiles: session.sharedFiles || [],
       connectedAt: new Date().toISOString()
     }));
   }
@@ -225,7 +237,40 @@ const server = http.createServer(async (req, res) => {
     let session = roomId ? activeSessions.get(roomId.toUpperCase().trim()) : null;
 
     if (!session && roomId) {
-      // Fallback: Check if room exists by pin prefix
+      const pinPart = roomId.replace('SOFO-', '').trim();
+      for (const [id, s] of activeSessions.entries()) {
+        if (s.pin === pinPart && s.status !== 'DISCONNECTED') {
+          session = s;
+          break;
+        }
+      }
+    }
+
+    if (!session || session.status === 'DISCONNECTED') {
+      return res.end(JSON.stringify({ success: true, status: 'DISCONNECTED', peers: [], docPosts: [], sharedFiles: [] }));
+    }
+
+    return res.end(JSON.stringify({
+      success: true,
+      roomId: session.roomId,
+      status: session.status,
+      peerCount: session.peers.length,
+      peers: session.peers,
+      docPosts: session.docPosts || [],
+      sharedFiles: session.sharedFiles || [],
+      networkVerified: true
+    }));
+  }
+
+  // MULTI-DEVICE DATA SYNC ENDPOINT (Post or Get synced Document Cards & File Vault Cards)
+  if (url.pathname === '/api/v1/session/sync-data' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    const { roomId, newDocPost, newFile, action, postId, fileId } = body;
+
+    let targetRoomId = roomId ? roomId.toUpperCase().trim() : null;
+    let session = targetRoomId ? activeSessions.get(targetRoomId) : null;
+
+    if (!session && roomId) {
       const pinPart = roomId.replace('SOFO-', '').trim();
       for (const [id, s] of activeSessions.entries()) {
         if (s.pin === pinPart && s.status !== 'DISCONNECTED') {
@@ -236,20 +281,29 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (!session) {
-      return res.end(JSON.stringify({ success: true, status: 'DISCONNECTED', peers: [] }));
+      res.statusCode = 404;
+      return res.end(JSON.stringify({ success: false, message: 'Room session not found for sync.' }));
     }
-    
-    if (session.status === 'DISCONNECTED') {
-      return res.end(JSON.stringify({ success: true, status: 'DISCONNECTED', peers: [] }));
+
+    if (!session.docPosts) session.docPosts = [];
+    if (!session.sharedFiles) session.sharedFiles = [];
+
+    if (action === 'ADD_DOC_POST' && newDocPost) {
+      if (!session.docPosts.some(p => p.id === newDocPost.id)) {
+        session.docPosts.unshift(newDocPost);
+      }
+    } else if (action === 'DELETE_DOC_POST' && postId) {
+      session.docPosts = session.docPosts.filter(p => p.id !== postId);
+    } else if (action === 'ADD_FILE' && newFile) {
+      if (!session.sharedFiles.some(f => f.id === newFile.id)) {
+        session.sharedFiles.unshift(newFile);
+      }
     }
 
     return res.end(JSON.stringify({
       success: true,
-      roomId: session.roomId,
-      status: session.status,
-      peerCount: session.peers.length,
-      peers: session.peers,
-      networkVerified: true
+      docPosts: session.docPosts,
+      sharedFiles: session.sharedFiles
     }));
   }
 
@@ -274,7 +328,7 @@ const server = http.createServer(async (req, res) => {
     }));
   }
 
-  // Synchronized Disconnect Endpoint (Forces BOTH devices to return to Home Page)
+  // Synchronized Disconnect Endpoint
   if (url.pathname === '/api/v1/session/disconnect' && req.method === 'POST') {
     const body = await parseJsonBody(req);
     const { roomId } = body;
@@ -284,15 +338,17 @@ const server = http.createServer(async (req, res) => {
       const session = activeSessions.get(targetRoomId);
       session.status = 'DISCONNECTED';
       session.peers = [];
-      setTimeout(() => {
-        activeSessions.delete(targetRoomId);
-      }, 5000);
+      session.docPosts = [];
+      session.sharedFiles = [];
+      setTimeout(() => { activeSessions.delete(targetRoomId); }, 5000);
     } else if (roomId) {
       const pinPart = roomId.replace('SOFO-', '').trim();
       for (const [id, session] of activeSessions.entries()) {
         if (session.pin === pinPart) {
           session.status = 'DISCONNECTED';
           session.peers = [];
+          session.docPosts = [];
+          session.sharedFiles = [];
           setTimeout(() => { activeSessions.delete(id); }, 5000);
         }
       }
@@ -308,7 +364,7 @@ const server = http.createServer(async (req, res) => {
 
 if (require.main === module) {
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`[SOFO Sync API Gateway v2.0] Security Verified Engine active on http://0.0.0.0:${PORT}`);
+    console.log(`[SOFO Sync API Gateway v2.0] Security Verified Multi-Device Engine active on http://0.0.0.0:${PORT}`);
   });
 }
 

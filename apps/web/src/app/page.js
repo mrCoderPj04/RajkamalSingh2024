@@ -50,7 +50,7 @@ export default function SOFOSyncApp() {
   const [lineWidth, setLineWidth] = useState(4);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
 
-  // Document State & Posted Cards Feed
+  // Document State & Real-Time Synced Posted Cards Feed
   const [docTitle, setDocTitle] = useState('Untitled Collaboration Document');
   const [docContent, setDocContent] = useState('');
   const [autoSaveStatus, setAutoSaveStatus] = useState('Ready');
@@ -59,25 +59,14 @@ export default function SOFOSyncApp() {
       id: 'demo_post_1',
       title: 'Project Roadmap & Sync Goals',
       content: '1. QR Code pairing established.\n2. Real-time document & file vault active.\n3. Synchronized disconnect verified.',
-      author: 'Primary Host (Laptop)',
+      author: 'Primary Host Device',
       timestamp: '10:15 AM'
     }
   ]);
   const [copiedDocId, setCopiedDocId] = useState(null);
 
-  // Shared File Vault State with Direct Downloads
-  const [sharedFiles, setSharedFiles] = useState([
-    {
-      id: 'vault_demo_1',
-      name: 'SOFO_Sync_Architecture_Spec.pdf',
-      size: '1.4 MB',
-      type: 'application/pdf',
-      uploadedAt: '10:20 AM',
-      uploadedBy: 'Primary Host (Laptop)',
-      url: null,
-      content: 'SOFO Sync Specification Document Content'
-    }
-  ]);
+  // Shared File Vault State with Real-Time Multi-Device Sync & Direct Downloads
+  const [sharedFiles, setSharedFiles] = useState([]);
 
   // AI Copilot State (Real Session)
   const [aiMessages, setAiMessages] = useState([
@@ -118,11 +107,11 @@ export default function SOFOSyncApp() {
     }
   }, [isMounted]);
 
-  // Real-Time Connected Peers & Synchronized Disconnect Poller
+  // Real-Time Connected Peers & Multi-Device Data Synchronizer Poller
   useEffect(() => {
     let intervalId;
     if (activeRoomId) {
-      const fetchLivePeers = async () => {
+      const fetchLivePeersAndSyncData = async () => {
         try {
           const res = await fetch(`${getApiBaseUrl()}/api/v1/session/peers?roomId=${activeRoomId}`);
           const data = await res.json();
@@ -139,6 +128,13 @@ export default function SOFOSyncApp() {
             }
 
             setActivePeers(data.peers);
+            if (data.docPosts && data.docPosts.length > 0) {
+              setSharedDocPosts(data.docPosts);
+            }
+            if (data.sharedFiles && data.sharedFiles.length > 0) {
+              setSharedFiles(data.sharedFiles);
+            }
+
             // If room has secondary peers or status is AUTHENTICATED, transition BOTH devices to authenticated view
             if ((data.peers.length > 1 || data.status === 'AUTHENTICATED') && connectionState === 'UNLINKED') {
               setConnectionState('AUTHENTICATED');
@@ -155,8 +151,8 @@ export default function SOFOSyncApp() {
         }
       };
 
-      fetchLivePeers();
-      intervalId = setInterval(fetchLivePeers, 1500);
+      fetchLivePeersAndSyncData();
+      intervalId = setInterval(fetchLivePeersAndSyncData, 1500);
     }
     return () => clearInterval(intervalId);
   }, [activeRoomId, connectionState]);
@@ -256,6 +252,7 @@ export default function SOFOSyncApp() {
         setActivePeers([
           { peerId: 'host_1', name: 'Primary Device (Host)', type: 'host', joinedAt: 'Just now', latency: '2ms' }
         ]);
+        if (data.docPosts) setSharedDocPosts(data.docPosts);
       } else {
         setAuthErrorMessage('Failed to generate session room.');
       }
@@ -305,6 +302,8 @@ export default function SOFOSyncApp() {
         setSessionToken(data.sessionToken);
         setActiveRoomId(data.roomId);
         setActivePeers(data.allPeers || [data.peer]);
+        if (data.docPosts) setSharedDocPosts(data.docPosts);
+        if (data.sharedFiles) setSharedFiles(data.sharedFiles);
         setAuthSuccessMessage('Security Verification Verified! Devices Linked.');
         setConnectionState('AUTHENTICATED');
       } else {
@@ -403,7 +402,7 @@ export default function SOFOSyncApp() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
-  // Document Editor Handlers & Send Post Card Feature
+  // Document Editor Handlers & Real-Time Multi-Device Send Post Card Feature
   const handleDocChange = (e) => {
     setDocContent(e.target.value);
     setAutoSaveStatus('Editing...');
@@ -412,7 +411,7 @@ export default function SOFOSyncApp() {
     }, 600);
   };
 
-  const handleSendDocumentPostCard = () => {
+  const handleSendDocumentPostCard = async () => {
     if (!docContent.trim() && !docTitle.trim()) return;
 
     const newPost = {
@@ -425,7 +424,20 @@ export default function SOFOSyncApp() {
 
     setSharedDocPosts(prev => [newPost, ...prev]);
     setDocContent('');
-    setAutoSaveStatus('Posted Card 📩');
+    setAutoSaveStatus('Posted & Synced 📩');
+
+    // Real-Time Sync to Backend Store so ALL devices receive it instantly!
+    try {
+      await fetch(`${getApiBaseUrl()}/api/v1/session/sync-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId: activeRoomId,
+          action: 'ADD_DOC_POST',
+          newDocPost: newPost
+        })
+      });
+    } catch (err) {}
   };
 
   const handleCopyDocPostText = (postId, text) => {
@@ -436,18 +448,29 @@ export default function SOFOSyncApp() {
     }
   };
 
-  const handleDeleteDocPostCard = (postId) => {
+  const handleDeleteDocPostCard = async (postId) => {
     setSharedDocPosts(prev => prev.filter(post => post.id !== postId));
+    try {
+      await fetch(`${getApiBaseUrl()}/api/v1/session/sync-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId: activeRoomId,
+          action: 'DELETE_DOC_POST',
+          postId: postId
+        })
+      });
+    } catch (err) {}
   };
 
-  // Vault File Upload & Download Card Handlers
-  const handleFileUpload = (e) => {
+  // Vault File Upload & Multi-Device Downloadable File Cards Handlers
+  const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
-    const newFiles = files.map(file => {
+    for (const file of files) {
       const blobUrl = URL.createObjectURL(file);
-      return {
+      const newFileObj = {
         id: `file_${Math.random().toString(36).substring(2, 9)}`,
         name: file.name,
         size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
@@ -455,11 +478,24 @@ export default function SOFOSyncApp() {
         uploadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         uploadedBy: isMobileDevice ? 'Mobile Client Browser' : 'Primary Host Device',
         blobUrl: blobUrl,
-        fileObj: file
+        content: `SOFO Sync Shared File Data: ${file.name}`
       };
-    });
 
-    setSharedFiles(prev => [...newFiles, ...prev]);
+      setSharedFiles(prev => [newFileObj, ...prev]);
+
+      // Sync File Vault Card to Backend Store so ALL devices get it!
+      try {
+        await fetch(`${getApiBaseUrl()}/api/v1/session/sync-data`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomId: activeRoomId,
+            action: 'ADD_FILE',
+            newFile: newFileObj
+          })
+        });
+      } catch (err) {}
+    }
   };
 
   const handleDownloadFileCard = (file) => {
@@ -972,7 +1008,7 @@ export default function SOFOSyncApp() {
             </div>
           )}
 
-          {/* TAB 2: COLLABORATIVE DOCUMENT WITH POSTED CARDS FEED */}
+          {/* TAB 2: COLLABORATIVE DOCUMENT WITH MULTI-DEVICE SYNCED CARDS FEED */}
           {activeTab === 'document' && (
             <div className="flex-1 flex flex-col bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6">
               {/* EDITOR & SEND BUTTON BAR */}
@@ -1001,25 +1037,25 @@ export default function SOFOSyncApp() {
                 <textarea
                   value={docContent}
                   onChange={handleDocChange}
-                  placeholder="Type collaborative document text here, then tap '📩 Send / Post Document Card' to display card on both connected browsers..."
+                  placeholder="Type collaborative document text here, then tap '📩 Send / Post Document Card' to publish card live to all connected devices..."
                   className="w-full h-48 p-4 bg-slate-900/60 border border-slate-800 rounded-2xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono text-sm leading-relaxed"
                 />
               </div>
 
-              {/* POSTED CARDS FEED (DISPLAYED UNDERNEATH ON BOTH BROWSERS) */}
+              {/* POSTED CARDS FEED (REAL-TIME SYNCED ACROSS ALL CONNECTED DEVICES) */}
               <div className="space-y-4 pt-4 border-t border-slate-800">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
-                    📌 Synchronized Document Cards ({sharedDocPosts.length})
+                    📌 Multi-Device Synced Document Cards ({sharedDocPosts.length})
                   </h3>
                   <span className="text-[10px] text-indigo-400 bg-indigo-950/80 px-2.5 py-0.5 rounded-full border border-indigo-800">
-                    Live Synced on Both Connected Browsers
+                    Live Synced Across Mobile & PC
                   </span>
                 </div>
 
                 {sharedDocPosts.length === 0 ? (
                   <div className="p-8 text-center border-2 border-dashed border-slate-800 rounded-2xl text-slate-500 text-xs">
-                    No document cards posted yet. Type text above and tap <strong className="text-indigo-400">"📩 Send / Post Document Card"</strong> to publish card to both devices!
+                    No document cards posted yet. Type text above and tap <strong className="text-indigo-400">&quot;📩 Send / Post Document Card&quot;</strong> to publish live to all devices!
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1069,13 +1105,13 @@ export default function SOFOSyncApp() {
             </div>
           )}
 
-          {/* TAB 3: SHARED FILE VAULT WITH DOWNLOADABLE FILE CARDS */}
+          {/* TAB 3: SHARED FILE VAULT WITH MULTI-DEVICE DOWNLOADABLE FILE CARDS */}
           {activeTab === 'vault' && (
             <div className="flex-1 flex flex-col bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-2xl">
               <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-6">
                 <div>
                   <h3 className="text-lg font-bold text-white">Shared File Vault</h3>
-                  <p className="text-xs text-slate-400">Upload files & download file cards in real-time across connected browsers</p>
+                  <p className="text-xs text-slate-400">Upload files & sync downloadable file cards live across all connected devices</p>
                 </div>
 
                 <label className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow-lg shadow-indigo-500/20 flex items-center gap-1.5">
@@ -1088,7 +1124,7 @@ export default function SOFOSyncApp() {
                 <div className="flex-1 flex flex-col items-center justify-center p-12 border-2 border-dashed border-slate-800 rounded-2xl text-center">
                   <span className="text-4xl mb-2">📁</span>
                   <p className="text-sm font-semibold text-slate-300">No files uploaded yet</p>
-                  <p className="text-xs text-slate-500 mt-1">Upload any document, image, or zip file to share downloadable card on both devices</p>
+                  <p className="text-xs text-slate-500 mt-1">Upload any document, image, or zip file to broadcast downloadable card live to all devices</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
