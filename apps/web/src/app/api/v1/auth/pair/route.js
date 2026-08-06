@@ -9,21 +9,34 @@ export async function POST(req) {
     const body = await req.json();
     const { pin, roomId, deviceName } = body;
 
-    const targetRoomId = roomId || (pin ? `SOFO-${pin}` : null);
-    if (!targetRoomId || !pin) {
+    const cleanPin = (pin || '').toString().trim();
+    let targetRoomId = (roomId || (cleanPin ? `SOFO-${cleanPin}` : '')).toString().trim().toUpperCase();
+
+    if (!cleanPin) {
       return NextResponse.json({
         success: false,
         message: 'Both Room ID and 6-Digit PIN are required for verification.'
       }, { status: 400 });
     }
 
-    const session = activeSessions.get(targetRoomId);
+    let session = activeSessions.get(targetRoomId);
+
+    // PIN Fallback Search across active sessions
+    if (!session) {
+      for (const [id, s] of activeSessions.entries()) {
+        if (s.pin === cleanPin && s.status !== 'DISCONNECTED') {
+          session = s;
+          targetRoomId = id;
+          break;
+        }
+      }
+    }
 
     if (!session) {
       return NextResponse.json({
         success: false,
         authenticated: false,
-        message: `Security Verification Failed: Room ${targetRoomId} does not exist or has expired.`
+        message: `Security Verification Failed: Session PIN "${cleanPin}" does not exist or has expired. Please click "Refresh QR Code" on the primary device first!`
       }, { status: 401 });
     }
 
@@ -37,11 +50,11 @@ export async function POST(req) {
       }, { status: 401 });
     }
 
-    if (session.pin !== pin) {
+    if (session.pin !== cleanPin) {
       return NextResponse.json({
         success: false,
         authenticated: false,
-        message: `Security Verification Failed: Incorrect 6-Digit PIN "${pin}".`
+        message: `Security Verification Failed: Incorrect 6-Digit PIN "${cleanPin}".`
       }, { status: 401 });
     }
 

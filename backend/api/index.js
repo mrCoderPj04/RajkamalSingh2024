@@ -1,6 +1,6 @@
 /**
  * SOFO Sync API Gateway Service (Production - Port 5000)
- * Security Enhanced: IP Subnet Verification, Token Signing & Synchronized Disconnect
+ * Security Enhanced: PIN Fallback Verification, IP Subnet Verification & Disconnect
  */
 
 const http = require('http');
@@ -113,28 +113,41 @@ const server = http.createServer(async (req, res) => {
     }));
   }
 
-  // Authentication Handshake Pair Request with IP & Network Verification
+  // Authentication Handshake Pair Request with PIN Fallback & Network Verification
   if (url.pathname === '/api/v1/auth/pair' && req.method === 'POST') {
     const body = await parseJsonBody(req);
     const { pin, roomId, deviceName } = body;
 
-    const targetRoomId = roomId || (pin ? `SOFO-${pin}` : null);
-    if (!targetRoomId || !pin) {
+    const cleanPin = (pin || '').toString().trim();
+    let targetRoomId = (roomId || (cleanPin ? `SOFO-${cleanPin}` : '')).toString().trim().toUpperCase();
+
+    if (!cleanPin) {
       res.statusCode = 400;
       return res.end(JSON.stringify({
         success: false,
-        message: 'Both Room ID and 6-Digit PIN are required for verification.'
+        message: 'Security Error: 6-Digit PIN is required for verification.'
       }));
     }
 
-    const session = activeSessions.get(targetRoomId);
+    let session = activeSessions.get(targetRoomId);
+
+    // PIN Fallback Search across active sessions if room ID didn't match directly
+    if (!session) {
+      for (const [id, s] of activeSessions.entries()) {
+        if (s.pin === cleanPin && s.status !== 'DISCONNECTED') {
+          session = s;
+          targetRoomId = id;
+          break;
+        }
+      }
+    }
 
     if (!session) {
       res.statusCode = 401;
       return res.end(JSON.stringify({
         success: false,
         authenticated: false,
-        message: `Security Verification Failed: Room ${targetRoomId} does not exist or has expired. Please generate a new session on the primary device!`
+        message: `Security Verification Failed: Session PIN "${cleanPin}" does not exist or has expired. Please click "Refresh QR Code" on the primary device first!`
       }));
     }
 
@@ -159,13 +172,13 @@ const server = http.createServer(async (req, res) => {
       }));
     }
 
-    if (session.pin !== pin) {
+    if (session.pin !== cleanPin) {
       session.failedAttempts += 1;
       res.statusCode = 401;
       return res.end(JSON.stringify({
         success: false,
         authenticated: false,
-        message: `Security Verification Failed: Incorrect 6-Digit PIN "${pin}". (${5 - session.failedAttempts} attempts remaining)`
+        message: `Security Verification Failed: Incorrect 6-Digit PIN "${cleanPin}". (${5 - session.failedAttempts} attempts remaining)`
       }));
     }
 
@@ -209,10 +222,22 @@ const server = http.createServer(async (req, res) => {
   // Get Live Connected Peers & Room Status
   if (url.pathname === '/api/v1/session/peers' && req.method === 'GET') {
     const roomId = url.searchParams.get('roomId');
-    if (!roomId || !activeSessions.has(roomId)) {
+    let session = roomId ? activeSessions.get(roomId.toUpperCase().trim()) : null;
+
+    if (!session && roomId) {
+      // Fallback: Check if room exists by pin prefix
+      const pinPart = roomId.replace('SOFO-', '').trim();
+      for (const [id, s] of activeSessions.entries()) {
+        if (s.pin === pinPart && s.status !== 'DISCONNECTED') {
+          session = s;
+          break;
+        }
+      }
+    }
+
+    if (!session) {
       return res.end(JSON.stringify({ success: true, status: 'DISCONNECTED', peers: [] }));
     }
-    const session = activeSessions.get(roomId);
     
     if (session.status === 'DISCONNECTED') {
       return res.end(JSON.stringify({ success: true, status: 'DISCONNECTED', peers: [] }));
@@ -220,7 +245,7 @@ const server = http.createServer(async (req, res) => {
 
     return res.end(JSON.stringify({
       success: true,
-      roomId,
+      roomId: session.roomId,
       status: session.status,
       peerCount: session.peers.length,
       peers: session.peers,
@@ -253,15 +278,26 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/v1/session/disconnect' && req.method === 'POST') {
     const body = await parseJsonBody(req);
     const { roomId } = body;
-    if (roomId && activeSessions.has(roomId)) {
-      const session = activeSessions.get(roomId);
+    let targetRoomId = roomId ? roomId.toUpperCase().trim() : null;
+
+    if (targetRoomId && activeSessions.has(targetRoomId)) {
+      const session = activeSessions.get(targetRoomId);
       session.status = 'DISCONNECTED';
       session.peers = [];
-      // Remove session after brief broadcast
       setTimeout(() => {
-        activeSessions.delete(roomId);
+        activeSessions.delete(targetRoomId);
       }, 5000);
+    } else if (roomId) {
+      const pinPart = roomId.replace('SOFO-', '').trim();
+      for (const [id, session] of activeSessions.entries()) {
+        if (session.pin === pinPart) {
+          session.status = 'DISCONNECTED';
+          session.peers = [];
+          setTimeout(() => { activeSessions.delete(id); }, 5000);
+        }
+      }
     }
+
     return res.end(JSON.stringify({ success: true, status: 'DISCONNECTED', message: 'Session terminated. Devices returning home.' }));
   }
 

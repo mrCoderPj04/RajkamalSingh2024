@@ -24,10 +24,12 @@ export default function SOFOSyncApp() {
   const [authErrorMessage, setAuthErrorMessage] = useState('');
   const [authSuccessMessage, setAuthSuccessMessage] = useState('');
 
+  // Mobile Device Detection Guard
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+
   // Unlinked Portal Tab: 'generate' | 'link' | 'scan' | 'pin'
   const [authPortalTab, setAuthPortalTab] = useState('generate');
   const [inputPin, setInputPin] = useState('');
-  const [scannedPayloadInput, setScannedPayloadInput] = useState('');
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [showPeersModal, setShowPeersModal] = useState(false);
@@ -63,14 +65,19 @@ export default function SOFOSyncApp() {
   const [aiInput, setAiInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
 
-  // Hydration Guard
+  // Hydration Guard & Mobile Device Check
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
+    if (typeof window !== 'undefined') {
+      const isMob = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+      setIsMobileDevice(isMob);
+      setAuthPortalTab(isMob ? 'scan' : 'generate');
+    }
   }, []);
 
-  // Auto-Generate Initial QR & Room on load if unlinked
+  // Auto-Generate Initial QR & Room on load if unlinked (Desktop)
   useEffect(() => {
     if (isMounted && connectionState === 'UNLINKED' && (authPortalTab === 'generate' || authPortalTab === 'link') && !qrPayload) {
       handleGenerateQrCode();
@@ -111,8 +118,8 @@ export default function SOFOSyncApp() {
             }
 
             setActivePeers(data.peers);
-            // If room has secondary peers and client is host, transition to authenticated view
-            if (data.peers.length > 1 && connectionState === 'UNLINKED') {
+            // If room has secondary peers or status is AUTHENTICATED, transition BOTH devices to authenticated view
+            if ((data.peers.length > 1 || data.status === 'AUTHENTICATED') && connectionState === 'UNLINKED') {
               setConnectionState('AUTHENTICATED');
             }
           } else {
@@ -179,7 +186,7 @@ export default function SOFOSyncApp() {
       }
       setIsCameraActive(true);
     } catch (err) {
-      setCameraError('Mobile camera permission ungranted or unavailable. Please tap "Grant Permission", use 6-digit PIN, or open Share Link.');
+      setCameraError('Mobile camera permission denied or unavailable on browser. Please tap "Grant Permission", use 6-digit PIN, or open Share Link.');
       setIsCameraActive(false);
     }
   };
@@ -193,7 +200,7 @@ export default function SOFOSyncApp() {
     setIsCameraActive(false);
   };
 
-  // Helper: Generate Direct Pairing Share Link (Bug 1)
+  // Helper: Generate Direct Pairing Share Link
   const getShareableLink = () => {
     if (typeof window !== 'undefined') {
       const origin = window.location.origin;
@@ -238,10 +245,10 @@ export default function SOFOSyncApp() {
     }
   };
 
-  // API Call: Perform Security Handshake (Requires valid PIN/Room + IP Verification)
+  // API Call: Perform Security Handshake (Requires valid PIN/Room + PIN Fallback + IP Verification)
   const handlePerformPairHandshake = async (pinValue, roomValue) => {
-    const pinToSubmit = (pinValue || inputPin).trim();
-    let roomToSubmit = (roomValue || activeRoomId).trim();
+    const pinToSubmit = (pinValue || inputPin).toString().trim();
+    let roomToSubmit = (roomValue || activeRoomId).toString().trim();
 
     if (!pinToSubmit) {
       setAuthErrorMessage('Security Verification Error: 6-Digit PIN is required!');
@@ -311,7 +318,6 @@ export default function SOFOSyncApp() {
     setAuthSuccessMessage('');
     setAuthErrorMessage('');
     setInputPin('');
-    setScannedPayloadInput('');
     stopCamera();
   };
 
@@ -504,7 +510,7 @@ export default function SOFOSyncApp() {
                   <span className="text-xl">{peer.type === 'host' ? '💻' : '📱'}</span>
                   <div>
                     <div className="text-xs font-bold text-white">{peer.name}</div>
-                    <div className="text-[10px] text-slate-400">IP Verified • Latency: {peer.latency || '4ms'}</div>
+                    <div className="text-[10px] text-slate-400">IP Subnet Verified • Latency: {peer.latency || '4ms'}</div>
                   </div>
                 </div>
                 <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
@@ -530,7 +536,7 @@ export default function SOFOSyncApp() {
                 Pair Devices to Unlock Workspace
               </h2>
               <p className="text-slate-400 text-xs lg:text-sm mt-2 leading-relaxed">
-                Generate a 6-digit PIN, share a direct pairing link, or scan QR code on mobile camera. All features remain strictly locked until security handshake is verified.
+                Generate a 6-digit PIN, share a direct pairing link, or scan QR code. All features remain strictly locked until security handshake is verified.
               </p>
             </div>
 
@@ -547,18 +553,34 @@ export default function SOFOSyncApp() {
               </div>
             )}
 
-            {/* PORTAL MODE SELECTOR TABS (BUG 1 FIX: REMOVED UNLOCK WORKSPACE, ADDED SHARE LINK) */}
+            {/* PORTAL MODE SELECTOR TABS (CAMERA OPTION SHOWN ONLY ON MOBILE BROWSERS) */}
             <div className="mt-8 flex flex-wrap justify-center border-b border-slate-800 pb-4 gap-2">
-              <button
-                onClick={() => setAuthPortalTab('generate')}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                  authPortalTab === 'generate'
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
-                    : 'glass-pill text-slate-400 hover:text-white'
-                }`}
-              >
-                <span>📱 1. QR Code</span>
-              </button>
+              {!isMobileDevice && (
+                <button
+                  onClick={() => setAuthPortalTab('generate')}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    authPortalTab === 'generate'
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
+                      : 'glass-pill text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>📱 1. QR Code</span>
+                </button>
+              )}
+
+              {/* CAMERA OPTION: DISPLAYED ONLY ON MOBILE BROWSERS */}
+              {isMobileDevice && (
+                <button
+                  onClick={() => setAuthPortalTab('scan')}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    authPortalTab === 'scan'
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
+                      : 'glass-pill text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>📷 1. Mobile Camera</span>
+                </button>
+              )}
 
               <button
                 onClick={() => setAuthPortalTab('link')}
@@ -572,17 +594,6 @@ export default function SOFOSyncApp() {
               </button>
 
               <button
-                onClick={() => setAuthPortalTab('scan')}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                  authPortalTab === 'scan'
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
-                    : 'glass-pill text-slate-400 hover:text-white'
-                }`}
-              >
-                <span>📷 3. Mobile Camera</span>
-              </button>
-
-              <button
                 onClick={() => setAuthPortalTab('pin')}
                 className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                   authPortalTab === 'pin'
@@ -590,12 +601,12 @@ export default function SOFOSyncApp() {
                     : 'glass-pill text-slate-400 hover:text-white'
                 }`}
               >
-                <span>🔢 4. Enter PIN</span>
+                <span>🔢 3. Enter 6-Digit PIN</span>
               </button>
             </div>
 
-            {/* OPTION 1: GENERATE QR CODE */}
-            {authPortalTab === 'generate' && (
+            {/* OPTION 1: GENERATE QR CODE (DESKTOP) */}
+            {authPortalTab === 'generate' && !isMobileDevice && (
               <div className="mt-8 flex flex-col items-center text-center space-y-4">
                 <p className="text-xs text-slate-400">Scan this QR code with mobile browser camera to pair instantly:</p>
 
@@ -646,7 +657,7 @@ export default function SOFOSyncApp() {
               </div>
             )}
 
-            {/* OPTION 2: GENERATE SHAREABLE LINK (BUG 1 FIX) */}
+            {/* OPTION 2: GENERATE SHAREABLE LINK */}
             {authPortalTab === 'link' && (
               <div className="mt-8 flex flex-col items-center text-center space-y-4 max-w-md mx-auto">
                 <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 flex items-center justify-center text-3xl text-indigo-400 border border-indigo-500/30">
@@ -675,8 +686,8 @@ export default function SOFOSyncApp() {
               </div>
             )}
 
-            {/* OPTION 3: CAMERA SCANNER (BUG 2 FIX) */}
-            {authPortalTab === 'scan' && (
+            {/* OPTION 3: MOBILE CAMERA SCANNER (ONLY SHOWN ON MOBILE BROWSERS) */}
+            {authPortalTab === 'scan' && isMobileDevice && (
               <div className="mt-6 flex flex-col items-center space-y-4">
                 <div className="w-full max-w-md bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col items-center relative overflow-hidden">
                   <div className="w-full h-56 bg-slate-900 rounded-xl overflow-hidden relative flex items-center justify-center border border-slate-800">
@@ -732,7 +743,7 @@ export default function SOFOSyncApp() {
               </div>
             )}
 
-            {/* OPTION 4: CONNECT VIA PIN */}
+            {/* OPTION 4: CONNECT VIA 6-DIGIT PIN */}
             {authPortalTab === 'pin' && (
               <div className="mt-8 flex flex-col items-center space-y-4 max-w-md mx-auto">
                 <div className="w-full">
