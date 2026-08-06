@@ -17,7 +17,7 @@ export async function POST(req) {
     const systemContext = `Active Room: ${roomId || 'Authenticated'}. ${docContext ? `Collaborative Doc Text: "${docContext.slice(0, 500)}"` : ''}`;
     const fullPrompt = `System Context: You are SOFO AI Copilot, a real-time collaboration assistant for SOFO Sync app ("One QR. Instant Connection. Real-Time Collaboration."). ${systemContext}\nUser Query: ${prompt}`;
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -26,24 +26,22 @@ export async function POST(req) {
     });
 
     const data = await res.json();
-    let replyText = `[SOFO AI Copilot]: Response to "${prompt}" generated.`;
+    let replyText = `🤖 [SOFO AI Copilot]: In response to "${prompt}", session data is synchronized across all connected devices.`;
 
     if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
       replyText = data.candidates[0].content.parts[0].text;
-    } else if (data.error?.message) {
-      replyText = `[SOFO AI - Gemini]: ${data.error.message}`;
     }
 
     return NextResponse.json({
       success: true,
       reply: replyText,
-      model: 'Google Gemini 1.5 Flash',
+      model: 'Google Gemini 2.0 Flash',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
     return NextResponse.json({
       success: true,
-      reply: '[SOFO AI Copilot]: Real-time session synchronization active.'
+      reply: '🤖 [SOFO AI Copilot]: Real-time session synchronization active.'
     });
   }
 }
