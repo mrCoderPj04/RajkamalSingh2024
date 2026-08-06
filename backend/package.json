@@ -1,0 +1,12 @@
+{
+  "name": "@sofo-sync/api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SOFO Sync API Gateway Service for Render Deployment",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "node api/index.js",
+    "dev": "node api/index.js"
+  },
+  "dependencies": {}
+}
