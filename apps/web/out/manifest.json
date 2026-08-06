@@ -1,0 +1,23 @@
+{
+  "name": "SOFO Sync",
+  "short_name": "SOFO Sync",
+  "description": "One QR. Instant Connection. Real-Time Collaboration.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07090E",
+  "theme_color": "#07090E",
+  "icons": [
+    {
+      "src": "/logo/SOFO_syc.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo/SOFO_syc.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SOFO Sync</string>
+    <string name="title_activity_main">SOFO Sync</string>
+    <string name="package_name">com.sofosync.app</string>
+    <string name="custom_url_scheme">com.sofosync.app</string>
+</resources>

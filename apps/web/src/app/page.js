@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    return `http://${window.location.hostname}:5000`;
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+};
 
 export default function SOFOSyncApp() {
   // Connection State Machine: 'UNLINKED' | 'AUTHENTICATING' | 'AUTHENTICATED'
@@ -73,7 +78,7 @@ export default function SOFOSyncApp() {
     if (activeRoomId) {
       const fetchLivePeers = async () => {
         try {
-          const res = await fetch(`${API_BASE_URL}/api/v1/session/peers?roomId=${activeRoomId}`);
+          const res = await fetch(`${getApiBaseUrl()}/api/v1/session/peers?roomId=${activeRoomId}`);
           const data = await res.json();
           if (data.success && data.peers) {
             setActivePeers(data.peers);
@@ -141,7 +146,7 @@ export default function SOFOSyncApp() {
     setIsGeneratingQr(true);
     setAuthErrorMessage('');
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/auth/qr/generate`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/v1/auth/qr/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -185,7 +190,7 @@ export default function SOFOSyncApp() {
     setAuthErrorMessage('');
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/auth/pair`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/v1/auth/pair`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -218,7 +223,7 @@ export default function SOFOSyncApp() {
   // Disconnect Session & Reset
   const handleDisconnectSession = async () => {
     try {
-      await fetch(`${API_BASE_URL}/api/v1/session/disconnect`, {
+      await fetch(`${getApiBaseUrl()}/api/v1/session/disconnect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ roomId: activeRoomId, peerId: 'current' })
@@ -343,7 +348,7 @@ export default function SOFOSyncApp() {
     setIsAiLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/ai/chat`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/v1/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

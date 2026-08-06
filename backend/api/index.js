@@ -37,7 +37,7 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
 
-  const url = new URL(req.url, `http://localhost:${PORT}`);
+  const url = new URL(req.url, `http://${req.headers.host || `localhost:${PORT}`}`);
 
   // Health Check
   if (url.pathname === '/health' || url.pathname === '/api/v1/health') {
@@ -198,8 +198,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 if (require.main === module) {
-  server.listen(PORT, () => {
-    console.log(`[SOFO Sync API] Production Gateway with Google Gemini AI active on http://localhost:${PORT}`);
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`[SOFO Sync API] Production Gateway with Google Gemini AI active on http://0.0.0.0:${PORT}`);
   });
 }
 
