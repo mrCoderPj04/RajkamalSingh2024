@@ -21,7 +21,6 @@
 | Service | Environment | Live URL | Status |
 |---|---|---|---|
 | **Frontend Web App** | Netlify | [https://sofo-syc.netlify.app](https://sofo-syc.netlify.app) | 🟢 Live |
-| **Backend API Gateway** | Render.com | [https://sofo-syc.onrender.com/api](https://sofo-syc.onrender.com/api) | 🟢 Live |
 | **GitHub Repository** | GitHub | [https://github.com/mrCoderPj04/Sofo_SyC.git](https://github.com/mrCoderPj04/Sofo_SyC.git) | 🟢 Active |
 
 ---
