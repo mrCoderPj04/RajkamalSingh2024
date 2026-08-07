@@ -52,6 +52,8 @@ export default function SOFOSyncApp() {
   const [color, setColor] = useState('#6366F1');
   const [lineWidth, setLineWidth] = useState(4);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  const lastSyncedCanvasRef = useRef(null);
+  const isDrawingRef = useRef(false);
 
   // Document State & Real-Time Synced Posted Cards Feed
   const [docTitle, setDocTitle] = useState('Untitled Collaboration Document');
@@ -136,6 +138,23 @@ export default function SOFOSyncApp() {
             }
             if (data.sharedFiles && data.sharedFiles.length > 0) {
               setSharedFiles(data.sharedFiles);
+            }
+            if (data.canvasData !== undefined && data.canvasData !== lastSyncedCanvasRef.current && !isDrawingRef.current) {
+              lastSyncedCanvasRef.current = data.canvasData;
+              const canvas = canvasRef.current;
+              if (canvas) {
+                const ctx = canvas.getContext('2d');
+                if (!data.canvasData) {
+                  ctx.clearRect(0, 0, canvas.width, canvas.height);
+                } else {
+                  const img = new Image();
+                  img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                  };
+                  img.src = data.canvasData;
+                }
+              }
             }
 
             // If room has secondary peers or status is AUTHENTICATED, transition BOTH devices to authenticated view
@@ -251,7 +270,9 @@ export default function SOFOSyncApp() {
       if (data.success) {
         setActiveRoomId(data.roomId);
         setActivePin(data.pin);
-        setQrPayload(data.qrPayload);
+        const hostOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://sofo-syc.netlify.app';
+        const fullPairUrl = `${hostOrigin}/?room=${data.roomId}&pin=${data.pin}`;
+        setQrPayload(fullPairUrl);
         setActivePeers([
           { peerId: 'host_1', name: 'Primary Device (Host)', type: 'host', joinedAt: 'Just now', latency: '2ms' }
         ]);
@@ -343,17 +364,45 @@ export default function SOFOSyncApp() {
     stopCamera();
   };
 
-  // Whiteboard Canvas Handlers
-  const handleMouseDown = (e) => {
+  // Whiteboard Canvas Handlers (Mouse + Mobile Touch Events & Real-Time Sync)
+  const broadcastCanvasSync = async (isClear = false) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    if (!canvas || !activeRoomId) return;
+    const canvasData = isClear ? null : canvas.toDataURL();
+    lastSyncedCanvasRef.current = canvasData;
+    try {
+      await fetch(`${getApiBaseUrl()}/api/v1/session/sync-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId: activeRoomId,
+          action: isClear ? 'CLEAR_CANVAS' : 'SYNC_CANVAS',
+          canvasData: canvasData
+        })
+      });
+    } catch (err) {}
+  };
 
+  const getCanvasPos = (clientX, clientY) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
+  };
+
+  const handleMouseDown = (e) => {
+    const { x, y } = getCanvasPos(e.clientX, e.clientY);
     setIsDrawing(true);
+    isDrawingRef.current = true;
     setStartPos({ x, y });
 
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -362,12 +411,10 @@ export default function SOFOSyncApp() {
   };
 
   const handleMouseMove = (e) => {
-    if (!isDrawing) return;
+    if (!isDrawingRef.current) return;
+    const { x, y } = getCanvasPos(e.clientX, e.clientY);
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
     const ctx = canvas.getContext('2d');
 
     if (tool === 'pen' || tool === 'eraser') {
@@ -377,13 +424,12 @@ export default function SOFOSyncApp() {
   };
 
   const handleMouseUp = (e) => {
-    if (!isDrawing) return;
+    if (!isDrawingRef.current) return;
     setIsDrawing(false);
+    isDrawingRef.current = false;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = e.clientX !== undefined ? getCanvasPos(e.clientX, e.clientY) : startPos;
     const ctx = canvas.getContext('2d');
 
     if (tool === 'rect') {
@@ -396,6 +442,35 @@ export default function SOFOSyncApp() {
       ctx.lineTo(x, y);
       ctx.stroke();
     }
+
+    broadcastCanvasSync();
+  };
+
+  // Mobile Touch Handlers
+  const handleTouchStart = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (touch) {
+      handleMouseDown({ clientX: touch.clientX, clientY: touch.clientY });
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (touch) {
+      handleMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    e.preventDefault();
+    const touch = e.changedTouches ? e.changedTouches[0] : null;
+    if (touch) {
+      handleMouseUp({ clientX: touch.clientX, clientY: touch.clientY });
+    } else {
+      handleMouseUp({});
+    }
   };
 
   const clearCanvas = () => {
@@ -403,6 +478,7 @@ export default function SOFOSyncApp() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    broadcastCanvasSync(true);
   };
 
   // Document Editor Handlers & Real-Time Multi-Device Send Post Card Feature
@@ -1003,6 +1079,9 @@ export default function SOFOSyncApp() {
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
                   className="w-full h-full cursor-crosshair touch-none"
                 />
               </div>

@@ -19,7 +19,7 @@ export async function GET(req) {
   }
 
   if (!session || session.status === 'DISCONNECTED' || !session.peers || session.peers.length === 0) {
-    return NextResponse.json({ success: true, status: 'DISCONNECTED', peers: [], docPosts: [], sharedFiles: [] });
+    return NextResponse.json({ success: true, status: 'DISCONNECTED', peers: [], docPosts: [], sharedFiles: [], canvasData: null });
   }
 
   return NextResponse.json({
@@ -30,6 +30,7 @@ export async function GET(req) {
     peers: session.peers,
     docPosts: session.docPosts || [],
     sharedFiles: session.sharedFiles || [],
+    canvasData: session.canvasData || null,
     networkVerified: true
   });
 }

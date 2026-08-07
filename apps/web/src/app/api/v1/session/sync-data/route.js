@@ -4,7 +4,7 @@ import { activeSessions } from '@/lib/sessionStore';
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { roomId, newDocPost, newFile, action, postId } = body;
+    const { roomId, newDocPost, newFile, action, postId, canvasData } = body;
 
     let targetRoomId = roomId ? roomId.toUpperCase().trim() : null;
     let session = targetRoomId ? activeSessions.get(targetRoomId) : null;
@@ -36,12 +36,17 @@ export async function POST(req) {
       if (!session.sharedFiles.some(f => f.id === newFile.id)) {
         session.sharedFiles.unshift(newFile);
       }
+    } else if (action === 'SYNC_CANVAS' && canvasData) {
+      session.canvasData = canvasData;
+    } else if (action === 'CLEAR_CANVAS') {
+      session.canvasData = null;
     }
 
     return NextResponse.json({
       success: true,
       docPosts: session.docPosts,
-      sharedFiles: session.sharedFiles
+      sharedFiles: session.sharedFiles,
+      canvasData: session.canvasData || null
     });
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 });

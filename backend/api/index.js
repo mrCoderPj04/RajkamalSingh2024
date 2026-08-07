@@ -89,7 +89,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/v1/auth/qr/generate' && req.method === 'POST') {
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
     const roomId = `SOFO-${pin}`;
-    const qrPayload = `sofo://sync?room=${roomId}&pin=${pin}&t=${Date.now()}`;
+    const qrPayload = `https://sofo-syc.netlify.app/?room=${roomId}&pin=${pin}`;
     const shareableUrl = `/?room=${roomId}&pin=${pin}`;
 
     const hostPeer = {
@@ -109,6 +109,7 @@ const server = http.createServer(async (req, res) => {
       failedAttempts: 0,
       hostIp: clientIp,
       peers: [hostPeer],
+      canvasData: null,
       docPosts: [
         {
           id: 'demo_post_1',
@@ -257,7 +258,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (!session || session.status === 'DISCONNECTED') {
-      return res.end(JSON.stringify({ success: true, status: 'DISCONNECTED', peers: [], docPosts: [], sharedFiles: [] }));
+      return res.end(JSON.stringify({ success: true, status: 'DISCONNECTED', peers: [], docPosts: [], sharedFiles: [], canvasData: null }));
     }
 
     return res.end(JSON.stringify({
@@ -268,14 +269,15 @@ const server = http.createServer(async (req, res) => {
       peers: session.peers,
       docPosts: session.docPosts || [],
       sharedFiles: session.sharedFiles || [],
+      canvasData: session.canvasData || null,
       networkVerified: true
     }));
   }
 
-  // MULTI-DEVICE DATA SYNC ENDPOINT (Post or Get synced Document Cards & File Vault Cards)
+  // MULTI-DEVICE DATA SYNC ENDPOINT (Post or Get synced Document Cards, File Vault Cards & Whiteboard Canvas)
   if (url.pathname === '/api/v1/session/sync-data' && req.method === 'POST') {
     const body = await parseJsonBody(req);
-    const { roomId, newDocPost, newFile, action, postId, fileId } = body;
+    const { roomId, newDocPost, newFile, action, postId, fileId, canvasData } = body;
 
     let targetRoomId = roomId ? roomId.toUpperCase().trim() : null;
     let session = targetRoomId ? activeSessions.get(targetRoomId) : null;
@@ -308,12 +310,17 @@ const server = http.createServer(async (req, res) => {
       if (!session.sharedFiles.some(f => f.id === newFile.id)) {
         session.sharedFiles.unshift(newFile);
       }
+    } else if (action === 'SYNC_CANVAS' && canvasData) {
+      session.canvasData = canvasData;
+    } else if (action === 'CLEAR_CANVAS') {
+      session.canvasData = null;
     }
 
     return res.end(JSON.stringify({
       success: true,
       docPosts: session.docPosts,
-      sharedFiles: session.sharedFiles
+      sharedFiles: session.sharedFiles,
+      canvasData: session.canvasData || null
     }));
   }
 
