@@ -11,9 +11,9 @@ const getApiBaseUrl = () => {
     if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.')) {
       return `http://${host}:5000`;
     }
-    return '';
   }
-  return '';
+  // Production Hosted Render Backend API Gateway
+  return 'https://sofo-syc.onrender.com';
 };
 
 export default function SOFOSyncApp() {
