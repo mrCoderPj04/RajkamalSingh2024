@@ -542,28 +542,40 @@ export default function SOFOSyncApp() {
     } catch (err) {}
   };
 
+  // Helper: Read file as Base64 Data URL
+  const readFileAsDataURL = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  };
+
   // Vault File Upload & Multi-Device Downloadable File Cards Handlers
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
     for (const file of files) {
-      const blobUrl = URL.createObjectURL(file);
-      const newFileObj = {
-        id: `file_${Math.random().toString(36).substring(2, 9)}`,
-        name: file.name,
-        size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
-        type: file.type || 'Document',
-        uploadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        uploadedBy: isMobileDevice ? 'Mobile Client Browser' : 'Primary Host Device',
-        blobUrl: blobUrl,
-        content: `SOFO Sync Shared File Data: ${file.name}`
-      };
-
-      setSharedFiles(prev => [newFileObj, ...prev]);
-
-      // Sync File Vault Card to Backend Store so ALL devices get it!
       try {
+        const fileData = await readFileAsDataURL(file);
+        const newFileObj = {
+          id: `file_${Math.random().toString(36).substring(2, 9)}`,
+          name: file.name,
+          size: file.size > 1024 * 1024 
+            ? (file.size / (1024 * 1024)).toFixed(2) + ' MB'
+            : (file.size / 1024).toFixed(1) + ' KB',
+          type: file.type || 'Document',
+          uploadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          uploadedBy: isMobileDevice ? 'Mobile Client Browser' : 'Primary Host Device',
+          fileData: fileData,
+          content: `SOFO Sync Shared File Data: ${file.name}`
+        };
+
+        setSharedFiles(prev => [newFileObj, ...prev]);
+
+        // Sync File Vault Card to Backend Store so ALL devices get it!
         await fetch(`${getApiBaseUrl()}/api/v1/session/sync-data`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -573,30 +585,49 @@ export default function SOFOSyncApp() {
             newFile: newFileObj
           })
         });
-      } catch (err) {}
+      } catch (err) {
+        console.error('File upload failed:', err);
+      }
     }
   };
 
   const handleDownloadFileCard = (file) => {
-    if (file.blobUrl) {
-      const a = document.createElement('a');
-      a.href = file.blobUrl;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } else {
-      // Create fallback text file download
-      const blob = new Blob([file.content || `SOFO Sync Shared File: ${file.name}`], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+    // 1. Direct Base64 Data URL conversion to local Blob download across connected devices
+    if (file.fileData && typeof file.fileData === 'string' && file.fileData.startsWith('data:')) {
+      try {
+        const parts = file.fileData.split(';base64,');
+        const contentType = parts[0].replace('data:', '') || 'application/octet-stream';
+        const raw = window.atob(parts[1]);
+        const uInt8Array = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; ++i) {
+          uInt8Array[i] = raw.charCodeAt(i);
+        }
+        const blob = new Blob([uInt8Array], { type: contentType });
+        const blobUrl = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        return;
+      } catch (e) {
+        console.warn('Direct blob conversion warning:', e);
+      }
     }
+
+    // 2. Fallback text file download
+    const blob = new Blob([file.content || `SOFO Sync Shared File: ${file.name}`], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   // AI Copilot Query Handler with Real Google Gemini AI API
